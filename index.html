@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>尧哥事务所（演示）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=ZCOOL+XiaoWei&display=swap">
+<style>
+/* VOICE: 温和、克制、像一本家里共用的照护记录本；只陈述事实，不下结论。
+   IDEA: 婴儿成长记录手册，按月龄翻页，每条记录都带手写的状态章。
+   PICTURE: 首页顶部的 0–12 月龄标尺，当前月龄为大圆点，每格显示待执行／待核实数量。
+   COLOUR and TYPE: 白底，鼠尾草绿色块为主，深绿墨色文字，珊瑚红只用于安全原则和待核实提醒；Noto Sans SC。
+   LAYOUT: 顶部标题与安全条，粘性模块导航，筛选条，内容为卡片网格；600px 以下单栏。 */
+:root{color-scheme:light dark;
+--bg:light-dark(#ffffff,#121815);--ink:light-dark(#1d2a23,#e4ebe6);--mute:light-dark(#56665d,#9fb0a6);
+--field:light-dark(#e2ebe3,#1b2520);--card:light-dark(#ffffff,#18201c);--line:light-dark(#cbd8ce,#2d3a33);
+--accent:light-dark(#c9472c,#f08467);--accent-bg:light-dark(#fbe9e4,#3a1f18);
+--s1:light-dark(#2463a6,#7fb3ea);--s1b:light-dark(#e3eefa,#18283a);
+--s2:light-dark(#9a5d00,#f0b45a);--s2b:light-dark(#fbf0dc,#33270f);
+--s3:light-dark(#22764a,#7fd1a2);--s3b:light-dark(#e0f3e7,#14301f);
+--s4:light-dark(#4b5563,#b4bcc6);--s4b:light-dark(#eceff2,#262b31)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(20px,3.5vw,48px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.1;margin:0;text-wrap:balance}
+h2{font-size:24px;line-height:1.2;margin:0 0 6px}
+h3{font-size:17px;margin:0}
+p{margin:0}
+.top{background:var(--field)}
+.top .wrap{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+.age{display:flex;flex-wrap:wrap;gap:8px;align-items:center;color:var(--mute);font-size:14px}
+.age b{color:var(--ink);font-size:16px}
+.safety{background:var(--accent-bg);color:var(--ink);border-block:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.safety .wrap{padding-inline:max(5vw,16px);max-width:none;display:flex;flex-wrap:wrap;gap:6px 22px;font-size:14px;padding-block:10px}
+.safety strong{color:var(--accent)}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;gap:4px;overflow-x:auto;padding:6px max(5vw,16px);max-width:none}
+nav a{flex:none;color:var(--mute);text-decoration:none;padding:10px 12px;border-radius:8px;font-size:15px;min-height:44px;display:flex;align-items:center}
+nav a.on{background:var(--field);color:var(--ink);font-weight:700}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:0 0 18px}
+.filters label{display:grid;gap:2px;font-size:13px;color:var(--mute)}
+input,select,textarea,button{font:inherit;font-size:16px;color:var(--ink)}
+input,select,textarea{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:44px;width:100%}
+textarea{min-height:76px;resize:vertical}
+:focus-visible{outline:3px solid var(--s1);outline-offset:2px}
+button{min-height:44px;padding:8px 16px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer}
+button.pri{background:var(--ink);color:var(--bg);border-color:var(--ink);font-weight:700}
+button.sm{min-height:36px;padding:4px 10px;font-size:14px}
+button.del{color:var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.sp{flex:1}
+.note{font-size:14px;color:var(--mute)}
+.warn{background:var(--s2b);color:var(--s2);padding:10px 14px;border-radius:8px;font-size:14px;margin-bottom:14px}
+.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.s1{color:var(--s1);background:var(--s1b)}.s2{color:var(--s2);background:var(--s2b)}.s3{color:var(--s3);background:var(--s3b)}.s4{color:var(--s4);background:var(--s4b)}
+.tag{display:inline-block;font-size:12px;padding:0 6px;border-radius:4px;color:var(--s2);border:1px solid currentColor;white-space:nowrap;margin-inline-start:4px}
+.tag.pro{color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:8px;align-content:start}
+.card dl{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;font-size:14px}
+.card dt{color:var(--mute);white-space:nowrap}.card dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.meta{font-size:13px;color:var(--mute)}
+.ruler{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));align-items:end;gap:2px;padding:26px 0 8px;position:relative}
+.ruler::before{content:"";position:absolute;left:3%;right:3%;bottom:58px;height:4px;border-radius:2px;background:var(--line)}
+.tick{display:grid;justify-items:center;gap:6px;border:0;background:none;padding:0;min-height:0;cursor:pointer;position:relative}
+.dot{width:16px;height:16px;border-radius:50%;background:var(--card);border:3px solid var(--line);z-index:1}
+.tick.cur .dot{width:44px;height:44px;background:var(--ink);border-color:var(--field);box-shadow:0 0 0 4px var(--ink)}
+.tick .m{font-size:13px;color:var(--mute);white-space:nowrap}.tick.cur .m{color:var(--ink);font-weight:700}
+.bars{display:flex;gap:2px;height:54px;align-items:end}
+.bars i{display:block;width:7px;border-radius:3px 3px 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--mute)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-inline-end:4px;vertical-align:-1px}
+.panels{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px;margin-top:18px}
+.panel{border-radius:12px;background:var(--field);padding:14px 16px;display:grid;gap:8px;align-content:start}
+.panel .n{font-size:32px;font-weight:700;line-height:1}
+.panel ul{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.panel li button{all:unset;cursor:pointer;display:block;box-sizing:border-box;width:100%;padding:6px 8px;border-radius:6px;background:var(--card);font-size:14px;overflow-wrap:anywhere}
+.panel li button:focus-visible{outline:3px solid var(--s1)}
+.months{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,150px),1fr));gap:10px;margin-bottom:22px}
+.mcard{text-align:start;display:grid;gap:6px;padding:12px;border-radius:10px;background:var(--field);border:2px solid transparent}
+.mcard.on{border-color:var(--ink)}.mcard b{font-size:18px}
+.principles{display:grid;gap:8px;margin:12px 0 18px;padding:14px 16px;border-radius:12px;background:var(--accent-bg)}
+.principles li{margin-inline-start:1.1em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:start;vertical-align:top}
+thead th{background:var(--field);min-width:220px}
+tbody th{white-space:nowrap;background:var(--field);position:sticky;left:0}
+.cell{display:grid;gap:2px}.cell span{color:var(--mute);font-size:12px;margin-inline-end:6px}
+.modal{position:fixed;inset:0;background:rgb(0 0 0/.45);display:none;align-items:start;justify-content:center;z-index:20;overflow-y:auto;padding:24px 12px}
+.modal.open{display:flex}
+.sheet{background:var(--bg);border-radius:14px;padding:20px;width:min(720px,100%);display:grid;gap:14px}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,200px),1fr));gap:12px}
+.fgrid label,.full{display:grid;gap:4px;font-size:14px;color:var(--mute)}
+.full{grid-column:1/-1}
+.ck{display:flex!important;gap:8px;align-items:center;color:var(--ink)!important}
+.ck input{width:22px;min-height:22px}
+.mf{border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:8px}
+.empty{padding:24px;border:1px dashed var(--line);border-radius:12px;color:var(--mute);text-align:center}
+footer{font-size:13px;color:var(--mute)}
+@media(max-width:600px){.ruler::before{bottom:50px}.tick.cur .dot{width:30px;height:30px}.bars{height:44px}.bars i{width:4px}.tick .m{font-size:10px}}
+@media(prefers-reduced-motion:no-preference){.card,.panel{transition:transform .15s}.panel:hover{transform:translateY(-1px)}}
+.hero{background:radial-gradient(120% 90% at 85% 20%,light-dark(#f3f7f2,#22302a) 0,transparent 60%),var(--field);padding:clamp(24px,5vw,72px) max(5vw,16px) clamp(24px,4vw,56px);overflow:hidden}
+.hero-in{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(20px,4vw,56px);align-items:center}
+.kicker{color:var(--mute);font-size:14px;letter-spacing:.04em}
+.hero h1{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-weight:400;font-size:clamp(44px,7vw,80px);line-height:1.05;margin:6px 0 10px}
+.lede{font-size:17px;max-width:30em;margin-bottom:18px}
+.photo{margin:0;display:grid;gap:10px;justify-items:center}
+.frame{width:min(100%,420px);aspect-ratio:4/5;background:#fff;padding:12px 12px 44px;border-radius:6px;box-shadow:0 1px 0 rgb(0 0 0/.06),0 18px 40px -12px rgb(30 50 40/.35);transform:rotate(-2deg);position:relative}
+.frame img,.ph{width:100%;height:100%;object-fit:cover;border-radius:2px;display:block}
+.ph{display:grid;place-items:center;background:linear-gradient(160deg,#dfeadf,#f7e3d8)}
+.ph span{font-family:"ZCOOL XiaoWei",serif;font-size:120px;color:#7c9a86}
+.ph[hidden],.frame img[hidden]{display:none}
+.upl{display:inline-flex;align-items:center;min-height:36px;padding:4px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:14px;color:var(--ink);cursor:pointer}
+body.ro .edit-only,body.ro [data-new],body.ro [data-rm],body.ro #mNew,body.ro [data-med],body.ro [data-mrm],body.ro #setBtn{display:none}
+body.ro select[data-st]{pointer-events:none;opacity:.7}
+@media(max-width:700px){.hero-in{grid-template-columns:minmax(0,1fr)}.frame{width:min(100%,320px)}}
+
+.guide{margin:16px 0;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;gap:8px}
+.glist{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.glist li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.glist li .meta{grid-column:2}.glist li button{grid-column:3;grid-row:1}
+.daily{border-color:var(--s2);background:var(--s2b)}
+.daily .glist li{border-color:color-mix(in srgb,var(--s2) 25%,transparent)}
+.gc{font-size:12px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--field);white-space:nowrap}
+@media(max-width:600px){.glist li{grid-template-columns:minmax(0,1fr)}.glist li .meta,.glist li button{grid-column:1;grid-row:auto;justify-self:start}}
+</style>
+</head>
+<body>
+<div style="background:#1d2a23;color:#fff;text-align:center;padding:8px 12px;font-size:14px">演示版：页面里都是示例数据，可以随便点、随便改；刷新后会恢复原样，不会保存。</div><header class="hero"><div class="hero-in">
+  <div class="htext">
+    <p class="kicker">0–12 个月 · 家庭照护与执行记录</p>
+    <h1>尧哥事务所</h1>
+    <p class="lede">每一天的喂养、睡眠、用品与观察，都在这里手动记下。</p>
+    <div class="age" id="age"></div>
+  </div>
+  <figure class="photo">
+    <div class="frame"><img id="coverImg" alt="尧哥的照片" hidden><div class="ph" id="ph" aria-hidden="true"><span>尧</span></div></div>
+    <figcaption class="row"><button class="sm" id="nextPhoto" type="button">换一张</button><label class="sm upl edit-only">上传照片<input type="file" id="upPhoto" accept="image/*" hidden></label><span class="note" id="photoNote"></span></figcaption>
+  </figure>
+</div></header>
+
+<div class="safety"><div class="wrap">
+  <span><strong>安全原则</strong> 0–12 个月睡眠区域避免松散被褥。</span>
+  <span><strong>安全原则</strong> 不要把婴儿监护器当作预防窒息的工具。</span>
+  <span>本站的提醒、比较、统计和建议仅为家庭管理辅助，不是医疗结论、安全保证，也不代表已经购买或已经完成照护。</span>
+</div></div>
+<nav aria-label="模块"><div class="wrap" id="nav"></div></nav>
+<main class="band"><div class="wrap">
+  <div id="sysnote"></div>
+  <div class="filters" id="filters"></div>
+  <div id="main"></div>
+</div></main>
+<footer class="band"><div class="wrap row">
+  <span class="sp">状态只能手动设置：已确认／待核实／已完成／待执行。个体化判断、医学解释、使用频率、稀释比例、保存时间和适用月龄一律按“待核实”处理。</span>
+  <button class="sm" id="copyAll">复制全部数据（备份）</button></div><div class="wrap" style="margin-top:8px"><span>数据保存在 Google 表格「尧哥事务所 数据」。能否修改由表格的共享权限决定：编辑者可以写，查看者只能看。</span>
+</div></footer>
+<div class="modal" id="modal" role="dialog" aria-modal="true"><form class="sheet" id="form" novalidate></form></div>
+<script>
+{
+const ST=['已确认','待核实','已完成','待执行'];
+const SC={'已确认':'s1','待核实':'s2','已完成':'s3','待执行':'s4'};
+const V='待核实';
+const MODS={
+ home:{n:'首页'},
+ months:{n:'月龄总览',d:'按月龄查看所有记录，也可以添加某个月龄的计划和待办事项。',f:[{k:'detail',l:'内容',t:'area'}]},
+ feeding:{n:'喂养记录',d:'记录实际观察到的喂养情况。估计量只是估计；是否正常请咨询专业人员。',f:[
+  {k:'time',l:'喂养时间',t:'time'},{k:'kind',l:'喂养方式',t:'sel',o:['母乳','配方奶','混合喂养','其他']},
+  {k:'amount',l:'估计量',ph:'如 约 60ml／左侧约 10 分钟'},{k:'spit',l:'吐奶',t:'sel',o:['未观察','无','少量','较多']},
+  {k:'reaction',l:'宝宝反应',t:'area'},{k:'abn',l:'其他异常观察',t:'area',ph:'只写看到的情况，不在这里下判断'}]},
+ sleep:{n:'睡眠与安全',d:'记录睡眠地点、时段、夜醒、安抚方式和环境。',f:[
+  {k:'place',l:'睡眠地点'},{k:'start',l:'开始',t:'time'},{k:'end',l:'结束',t:'time'},{k:'wakes',l:'夜间醒来次数',t:'num'},
+  {k:'soothe',l:'安抚方式'},{k:'env',l:'环境观察',t:'area',ph:'温度、光线、床面、有无松散物品等'}]},
+ supplies:{n:'用品与库存',d:'优先实用和性价比，避免重复囤货：补购前先看剩余数量和是否在用。',f:[
+  {k:'bought',l:'购买情况',t:'sel',o:['已购','未购',V]},{k:'inuse',l:'使用情况',t:'sel',o:['在用','未开始','停用',V]},
+  {k:'qty',l:'剩余数量'},{k:'reorder',l:'需要补购',t:'sel',o:['否','是','待定']},{k:'scene',l:'适用场景'},
+  {k:'price',l:'价格／性价比备注'},{k:'usage',l:'用法、使用频率、适用月龄',t:'area',v:1}]},
+ monitors:{n:'监护器比较',d:'产品资料、我的判断、待核实分开保存。比较结果不代表购买建议，是否购买由你决定。'},
+ care:{n:'洗护与清洁',d:'记录洗护与清洁安排和观察。频率、稀释比例、保存时间默认待核实。',f:[
+  {k:'item',l:'项目',ph:'如 洗澡、清洗奶瓶、尿布区护理'},{k:'product',l:'使用用品'},
+  {k:'freq',l:'使用频率',v:1},{k:'dilution',l:'稀释比例／用量',v:1},{k:'keep',l:'保存时间',v:1},{k:'obs',l:'观察',t:'area'}]},
+ outing:{n:'出行与活动',d:'记录外出和活动。',f:[
+  {k:'place',l:'地点／活动'},{k:'dur',l:'时长'},{k:'items',l:'携带物品',t:'area'},{k:'obs',l:'观察',t:'area'}]},
+ review:{n:'家庭复盘',d:'每周一次。原始观察、个人判断、专业意见分开写。',f:[
+  {k:'raw',l:'原始观察',t:'area',ph:'只写看到、记录到的事实'},{k:'judge',l:'个人判断',t:'area',ph:'家庭成员的看法'},
+  {k:'pro',l:'专业意见',t:'area',ph:'注明来源（如 儿科医生）和日期；没有咨询就留空'},{k:'next',l:'下周跟进',t:'area'}]}
+};
+const MF=[['display','独立显示屏'],['phone','手机报警'],['multi','多用户'],['privacy','隐私'],['region','地区锁'],['power','供电合规'],['night','夜视'],['cry','哭声提醒'],['face','口鼻遮挡检测'],['price','价格'],['other','其他']];
+const LEAN=['未决定','继续比较','暂不考虑','我已决定购买'];
+let pickDay=0,canEdit=false,photo=null,busy=0,recs=[],mons=[],cfg={},view='home',F={m:'',s:'',mod:'',q:''},loaded=0;
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>ymd(new Date());
+const weekRange=()=>{const d=new Date();const w=(d.getDay()+6)%7;const a=new Date(d);a.setDate(d.getDate()-w);const b=new Date(a);b.setDate(a.getDate()+6);return[ymd(a),ymd(b)]};
+const chip=s=>s?`<span class="chip ${SC[s]||'s4'}">${esc(s)}</span>`:'<span class="chip s4">未设状态</span>';
+const mlabel=m=>m===''||m==null?'未指定月龄':`${esc(m)} 个月`;
+const nid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const note=t=>{$('#sysnote').innerHTML=t?`<div class="warn">${esc(t)}</div>`:''};
+
+const SRC={
+ nip:['澳洲国家免疫计划时间表（2026年10月版）','https://www.health.gov.au/resources/publications/national-immunisation-program-schedule'],
+ rn:['Red Nose 安全睡眠','https://rednose.org.au/section/safe-sleeping'],
+ car:['Better Health Channel（维州）儿童乘车安全','https://betterhealth.vic.gov.au/health/healthyliving/child-safety-in-the-car'],
+ ascia:['ASCIA 如何引入固体食物 FAQ（2024）','https://www.allergy.org.au/images/pc/ASCIA_PC_How_to_Introduce_Solid_Foods_FAQ_2024.pdf'],
+ cc:['Cancer Council 婴儿防晒','https://www.cancer.org.au/about-us/policy-and-advocacy/prevention/uv-radiation/related-resources/sun-protection-babies'],
+ st:['昆士兰儿童健康服务（具体安排待核实）','']
+};
+const GALL=[
+ ['睡眠','Red Nose 六项安全睡眠建议：仰睡；头脸不遮盖；孕期和出生后远离烟草；白天晚上都用安全的睡眠环境；头 6–12 个月让宝宝睡在父母房间里的安全婴儿床；母乳喂养。','rn'],
+ ['法规','乘车时所有乘客都必须按规定约束。儿童安全座椅须符合澳洲标准 AS/NZS 1754。','car'],
+ ['防晒','12 个月以下：紫外线指数 3 或以上时，避免阳光直射；用遮阴、衣物和帽子防护。','cc']
+];
+const GUIDE={
+ 0:[['疫苗','出生：乙肝疫苗。出生后尽快接种，最好在 24 小时内，必须在 7 天内（通常在医院完成）。','nip'],
+  ['法规','6 个月以下必须使用经认证、正确固定和调整的后向式安全座椅，出院回家时就要用。','car'],
+  ['防晒','6 个月以下不建议大面积使用防晒霜，以遮阴、衣物和帽子为主。','cc'],
+  ['体检','出生后的母婴健康家访或首次检查，时间按所在州安排（待核实）。','st']],
+ 1:[['疫苗','准备 2 个月疫苗。最早可以从 6 周开始接种，可以向家庭医生或母婴健康护士预约。','nip'],
+  ['体检','6–8 周左右的婴儿检查，按所在州的健康手册安排（待核实）。','st']],
+ 2:[['疫苗','2 个月（最早 6 周）：六合一（白喉、破伤风、百日咳、乙肝、脊灰、Hib）、肺炎球菌（Prevenar 20）、轮状病毒（第 1 剂必须在 14 周龄前接种）。原住民及托雷斯海峡岛民儿童另有 B 型脑膜炎疫苗。','nip']],
+ 3:[['疫苗','轮状病毒第 2 剂必须在 24 周龄前完成，留意 4 个月疫苗的预约。','nip']],
+ 4:[['疫苗','4 个月：六合一、肺炎球菌（Prevenar 20）、轮状病毒第 2 剂（必须在 24 周龄前）。','nip'],
+  ['喂养','固体食物不要在 4 个月之前开始。','ascia'],
+  ['体检','4 个月左右的检查，按所在州安排（待核实）。','st']],
+ 5:[['喂养','观察宝宝是否准备好吃固体食物：一般约 6 个月开始，不早于 4 个月，并且要看宝宝是否准备好。','ascia']],
+ 6:[['疫苗','6 个月：六合一第 3 剂。流感疫苗从 6 个月起每年接种；第一次接种的 9 岁以下儿童需要打两剂，间隔至少 4 周。','nip'],
+  ['喂养','约 6 个月、宝宝准备好时开始引入固体食物，同时可以继续母乳喂养。','ascia'],
+  ['法规','满 6 个月后，法律允许使用后向或前向安全座椅；但建议继续使用后向座椅，直到宝宝超出座椅的尺寸限制。','car'],
+  ['防晒','6 个月以上可以使用防晒霜，但它只是遮阴、衣物和帽子之外的最后一道防线。','cc'],
+  ['睡眠','同房睡（婴儿床放在父母房间）建议持续 6–12 个月。','rn']],
+ 7:[['睡眠','毛绒玩具和安抚巾建议至少 7 个月后才放进睡眠区（早产儿按矫正月龄计算）。','rn'],
+  ['喂养','每顿只加入一种常见的易致敏食物。宝宝耐受后要规律地吃，例如每周约两次。','ascia']],
+ 8:[['喂养','从 8 个月起可以用杯子给宝宝喝水。','ascia']],
+ 9:[['喂养','12 个月前要引入常见的易致敏食物，并做成适合宝宝的形式，例如全熟鸡蛋、顺滑花生酱，以及奶制品、芝麻、小麦、鱼等。推迟引入鸡蛋和花生，会增加过敏风险。','ascia'],
+  ['喂养','不要给整颗坚果或坚果碎，用顺滑的坚果酱或坚果粉代替。','ascia']],
+ 10:[['喂养','12 个月前，牛奶不能作为主要的奶。','ascia']],
+ 11:[['疫苗','准备 12 个月疫苗的预约。','nip']],
+ 12:[['疫苗','12 个月：A、C、W、Y 型脑膜炎（Nimenrix）、麻疹腮腺炎风疹（Priorix）、肺炎球菌（Prevenar 20）。原住民及托雷斯海峡岛民儿童另有 B 型脑膜炎疫苗。下一次是 18 个月。','nip'],
+  ['体检','12 个月检查，按所在州安排（待核实）。','st']]
+};
+function guideItems(arr){return arr.map(([c,t,s])=>{const[sn,su]=SRC[s]||['',''];
+ return`<li><span class="gc">${esc(c)}</span><span>${esc(t)}</span><span class="meta">来源：${su?`<a href="${esc(su)}" target="_blank" rel="noopener">${esc(sn)}</a>`:esc(sn)}${s==='st'||s==='qld'?'<span class="tag">待核实</span>':''}</span><button class="sm edit-only" data-gadd="${esc(t)}" data-gsrc="${esc(sn)}">加入事项</button></li>`}).join('')}
+function guideBox(m,compact){const a=GUIDE[m]||[];
+ return`<section class="guide"><div class="row"><h3 class="sp">${m} 个月 · 通用注意事项（澳洲）</h3></div>
+ <p class="note">根据澳洲官方或专业机构的公开资料整理，是一般信息，不是医疗建议。具体到宝宝本人的安排，请向家庭医生或母婴健康护士确认（待核实）。各州规定可能不同。</p>
+ <ul class="glist">${guideItems(a)||'<li class="note">本月没有新增的通用事项，请参考下面全年适用的内容。</li>'}</ul>
+ ${compact?'':`<h3 style="margin-top:10px">全年适用</h3><ul class="glist">${guideItems(GALL)}</ul>`}</section>`}
+
+Object.assign(SRC,{
+ wom:['Royal Women\'s Hospital 新生儿检查与用药','https://www.thewomens.org.au/health-information/pregnancy-and-birth/after-your-baby-is-born/tests-and-medicines-for-newborn-babies'],
+ nbs:['Better Health Channel 新生儿筛查','https://www.betterhealth.vic.gov.au/health/ConditionsAndTreatments/newborn-screening'],
+ jau:['悉尼儿童医院网络 新生儿黄疸','https://www.schn.health.nsw.gov.au/parents-and-carers/fact-sheets/jaundice-in-newborn-babies'],
+ qch:['昆士兰儿童医院 宝宝是否吃够母乳','https://www.childrens.health.qld.gov.au/health-a-to-z/breastfeeding/is-my-baby-getting-enough-breast-milk'],
+ wa:['WA 妇女与新生儿健康服务 新生儿体重下降','https://www.wnhs.health.wa.gov.au/~/media/HSPs/NMHS/Hospitals/WNHS/Documents/Patients-resources/Weight-loss-and-your-newborn-baby.pdf?thn=0'],
+ rc:['Raising Children Network 新生儿第一周','https://raisingchildren.net.au/pregnancy/labour-birth/first-week-of-life/newborns-first-week'],
+ fev:['Pregnancy, Birth and Baby 婴儿发烧','https://www.pregnancybirthbaby.org.au/babies/health-and-wellbeing/fever-in-babies'],
+ qld:['昆士兰儿童健康服务（体检时间以当地安排为准）','']
+});
+// [从第几天, 到第几天, 类别, 内容, 来源]；出生当天 = 第 1 天
+const DAILY=[
+ [1,28,'喂养','新生儿通常每 24 小时吃奶 8–12 次。','qch'],
+ [1,28,'就医','3 个月以下的宝宝体温达到 38°C 或以上，即使没有其他不适，也要立刻去最近的医院急诊。3 个月以下建议用电子体温计量腋下。','fev'],
+ [1,28,'就医','在昆士兰可以拨打 13 HEALTH（13 43 25 84）咨询护士；紧急情况请拨 000。','qch'],
+ [1,1,'用药','维生素 K：建议出生后几小时内打一针（通常在医院完成，请确认）。','wom'],
+ [1,7,'疫苗','乙肝疫苗：出生后尽快接种，最好在 24 小时内，必须在 7 天内。请确认是否已经接种。','nip'],
+ [1,1,'尿布','第 1 天：至少 1 片湿尿布，以及黏稠的墨绿色胎便。','qch'],
+ [1,1,'就医','如果出生后 24 小时内就出现黄疸（皮肤或眼白发黄），要尽快就医。','jau'],
+ [1,7,'筛查','听力筛查在出生后不久进行。如果出院前还没做，请询问医院或助产士。','wom'],
+ [2,2,'尿布','第 2 天：至少 2 片湿尿布，墨绿色软便。','qch'],
+ [2,3,'筛查','足跟血筛查一般在出生后 36–72 小时内完成。请确认已经做了。','nbs'],
+ [2,4,'体重','头几天体重下降，最多约为出生体重的 10%，这属于正常范围。','qch'],
+ [3,3,'尿布','第 3 天：至少 3 片湿尿布，绿褐色大便。','qch'],
+ [4,4,'尿布','第 4 天：至少 4 片湿尿布，尿色淡或清；大便颜色变浅，呈绿褐色或褐黄色。','qch'],
+ [4,6,'体重','体重通常在第 4–6 天开始回升。','qch'],
+ [4,6,'就医','如果第 3 天以后尿布上仍有粉橙色的尿酸盐结晶，请打 13 HEALTH 咨询。','qch'],
+ [5,28,'尿布','从第 5 天起：每天至少 5 片湿尿布，加上 3 次或以上芥末黄色的软便或稀便。','qch'],
+ [5,6,'就医','如果第 5 天大便仍然是墨绿色，请打 13 HEALTH 咨询。','qch'],
+ [1,10,'脐带','脐带残端会逐渐变干、变黑，通常在 10 天内脱落。保持清洁干燥；如果发红或有黏液，请告诉助产士、家庭医生或母婴健康护士。','rc'],
+ [1,14,'黄疸','黄疸通常在第一周末消退。如果宝宝很嗜睡、需要叫醒才吃奶，尿色深，大便颜色浅（灰白色），或者黄色往身体下方扩散，要及时就医。','jau'],
+ [14,14,'体重','大约 2 周大时，体重应该恢复到出生体重。','qch'],
+ [15,28,'黄疸','如果黄疸持续超过 2 周，要看医生。','jau'],
+ [15,28,'体重','头三个月每周体重至少增加 150–200 克（以医护人员的称重为准）。','wa'],
+ [12,16,'体检','出生后约 2 周的免费检查。昆士兰的具体安排请向儿童健康服务确认（待核实）。','qld'],
+ [26,28,'体检','出生后约 4 周的免费检查。昆士兰的具体安排请向儿童健康服务确认（待核实）。','qld']
+];
+function dayOfLife(){if(!cfg.birth)return null;const b=new Date(cfg.birth+'T00:00'),n=new Date();n.setHours(0,0,0,0);if(isNaN(b))return null;return Math.round((n-b)/864e5)+1}
+function dailyBox(d,picker){const items=DAILY.filter(x=>d>=x[0]&&d<=x[1]).map(x=>[x[2],x[3],x[4]]);
+ const today=dayOfLife();
+ return`<section class="guide daily"><div class="row"><h3 class="sp">${d===today?'今天：':''}出生第 ${d} 天 · 新生儿每日注意事项</h3>${picker?`<label class="note">选择日期<select id="dayPick" style="width:auto;min-height:36px;padding:4px 8px">${Array.from({length:28},(_,i)=>`<option value="${i+1}" ${i+1===d?'selected':''}>第 ${i+1} 天</option>`).join('')}</select></label>`:''}</div>
+ <p class="note">出生当天算第 1 天，按出生日期 ${esc(cfg.birth||'')} 推算，仅供参考。内容来自澳洲医院和卫生部门的公开资料，是一般信息，不是医疗建议；宝宝的具体情况请向助产士、家庭医生或母婴健康护士确认。</p>
+ <ul class="glist">${guideItems(items)}</ul></section>`}
+
+function refAge(){if(!cfg.birth)return null;const b=new Date(cfg.birth+'T00:00'),n=new Date();if(isNaN(b))return null;let m=(n.getFullYear()-b.getFullYear())*12+n.getMonth()-b.getMonth();if(n.getDate()<b.getDate())m--;return m}
+function renderAge(){const r=refAge();
+ $('#age').innerHTML=`<span>当前月龄（手动设定）：<b>${cfg.month===''||cfg.month==null?'未设定':esc(cfg.month)+' 个月'}</b></span>
+ <span>出生日期：<b>${cfg.birth?esc(cfg.birth):'待填写'}</b>${r!=null?`（按日期参考：出生第 ${dayOfLife()} 天，约 ${r} 个月；不会自动改月龄）`:''}</span>
+ <button class="sm" id="setBtn">调整</button>`;
+ $('#setBtn').onclick=openSettings}
+function renderNav(){$('#nav').innerHTML=Object.entries(MODS).map(([k,m])=>`<a href="#${k}" class="${k===view?'on':''}" ${k===view?'aria-current="page"':''}>${m.n}</a>`).join('')}
+function renderFilters(){
+ if(view==='home'){$('#filters').innerHTML='<p class="note">首页按固定分组显示全部记录，不受筛选影响。</p>';return}
+ const mo=['<option value="">全部月龄</option>',...Array.from({length:13},(_,i)=>`<option value="${i}" ${F.m===String(i)?'selected':''}>${i} 个月</option>`),`<option value="none" ${F.m==='none'?'selected':''}>未指定月龄</option>`].join('');
+ const so=['<option value="">全部状态</option>',...ST.map(s=>`<option ${F.s===s?'selected':''}>${s}</option>`)].join('');
+ const md=view==='months'?`<label>模块<select id="fMod"><option value="">全部模块</option>${Object.entries(MODS).filter(([k])=>!['home','monitors'].includes(k)).map(([k,m])=>`<option value="${k}" ${F.mod===k?'selected':''}>${m.n}</option>`).join('')}</select></label>`:'';
+ $('#filters').innerHTML=`<label>月龄<select id="fM">${mo}</select></label><label>状态<select id="fS">${so}</select></label>${md}<label>搜索<input id="fQ" value="${esc(F.q)}" placeholder="标题或内容"></label><button class="sm" id="fClr">清除筛选</button>`;
+ $('#fM').onchange=e=>{F.m=e.target.value;renderMain()};$('#fS').onchange=e=>{F.s=e.target.value;renderMain()};
+ $('#fQ').oninput=e=>{F.q=e.target.value;renderMain()};$('#fClr').onclick=()=>{F={m:'',s:'',mod:'',q:''};renderFilters();renderMain()};
+ if($('#fMod'))$('#fMod').onchange=e=>{F.mod=e.target.value;renderMain()}}
+function pass(r){
+ if(F.m==='none'&&!(r.month===''||r.month==null))return false;
+ if(F.m&&F.m!=='none'&&String(r.month)!==F.m)return false;
+ if(F.s&&r.status!==F.s)return false;
+ if(view==='months'&&F.mod&&r.module!==F.mod)return false;
+ if(F.q){const t=JSON.stringify([r.title,r.note,r.verify,r.data]).toLowerCase();if(!t.includes(F.q.toLowerCase()))return false}
+ return true}
+const sortR=a=>[...a].sort((x,y)=>(y.date||'').localeCompare(x.date||'')||(y.updatedAt||'').localeCompare(x.updatedAt||''));
+function card(r){const m=MODS[r.module]||{n:r.module,f:[]};
+ const dl=(m.f||[]).map(f=>{const v=r.data?.[f.k];if(v===''||v==null)return'';return`<dt>${esc(f.l)}${f.v?`<span class="tag">${V}</span>`:''}</dt><dd>${esc(v)}</dd>`}).join('');
+ return`<article class="card"><div class="row">${chip(r.status)}<h3 class="sp">${esc(r.title)}</h3></div>
+ <div class="meta">${m.n} · ${mlabel(r.month)}${r.date?' · '+esc(r.date):''}${r.needPro?'<span class="tag pro">需要专业确认</span>':''}</div>
+ ${dl?`<dl>${dl}</dl>`:''}${r.verify?`<div class="meta"><span class="tag">${V}</span> ${esc(r.verify)}</div>`:''}${r.note?`<div class="meta">${esc(r.note)}</div>`:''}
+ <div class="row"><select class="sm" data-st="${esc(r.id)}" aria-label="手动修改状态" style="width:auto;min-height:36px;padding:4px 8px">${ST.map(s=>`<option ${s===r.status?'selected':''}>${s}</option>`).join('')}</select><span class="sp"></span><button class="sm" data-ed="${esc(r.id)}">编辑</button><button class="sm del" data-rm="${esc(r.id)}">删除</button></div></article>`}
+function list(arr,empty){return arr.length?`<div class="grid">${arr.map(card).join('')}</div>`:`<div class="empty">${empty}</div>`}
+
+function ruler(){const cur=cfg.month===''||cfg.month==null?-1:+cfg.month;let mx=1;const c=[];
+ for(let i=0;i<13;i++){const a=recs.filter(r=>String(r.month)===String(i));const t=a.filter(r=>r.status==='待执行').length,v=a.filter(r=>r.status==='待核实').length,d=a.filter(r=>r.status==='已完成').length;c.push([t,v,d]);mx=Math.max(mx,t,v,d)}
+ return`<div class="ruler" role="list">${c.map(([t,v,d],i)=>`<button class="tick ${i===cur?'cur':''}" data-month="${i}" role="listitem" aria-label="${i} 个月：待执行 ${t}，待核实 ${v}，已完成 ${d}"><span class="bars"><i style="height:${t/mx*100}%;background:var(--s4)"></i><i style="height:${v/mx*100}%;background:var(--s2)"></i><i style="height:${d/mx*100}%;background:var(--s3)"></i></span><span class="dot"></span><span class="m">${i}月</span></button>`).join('')}</div>
+ <div class="legend"><span><i style="background:var(--s4)"></i>待执行</span><span><i style="background:var(--s2)"></i>待核实</span><span><i style="background:var(--s3)"></i>已完成（手动标记）</span><span>点击月龄查看该月记录</span></div>`}
+function panel(t,arr,sub,fmt){return`<section class="panel"><div class="row"><h3 class="sp">${t}</h3><span class="n">${arr.length}</span></div>${sub?`<p class="note">${sub}</p>`:''}<ul>${arr.slice(0,6).map(fmt||(r=>`<li><button data-ed="${esc(r.id)}">${chip(r.status)} ${esc(r.title)} <span class="meta">· ${MODS[r.module]?.n||''}${r.date?' · '+esc(r.date):''}</span></button></li>`)).join('')||'<li class="note">暂无</li>'}</ul>${arr.length>6?`<p class="note">另有 ${arr.length-6} 条</p>`:''}</section>`}
+function home(){const[a,b]=weekRange();const inW=r=>r.date&&r.date>=a&&r.date<=b;
+ const todo=sortR(recs.filter(r=>r.status==='待执行'&&(inW(r)||!r.date)));
+ const done=sortR(recs.filter(r=>r.status==='已完成'&&inW(r)));
+ const ver=sortR(recs.filter(r=>r.status===V));const mv=mons.filter(m=>m.status===V||Object.values(m.fields||{}).some(f=>f.verify));
+ const buy=sortR(recs.filter(r=>r.module==='supplies'&&r.data?.reorder==='是'));
+ const pro=sortR(recs.filter(r=>r.needPro));
+ const rev=sortR(recs.filter(r=>r.module==='review'));
+ const cm=cfg.month===''||cfg.month==null?null:+cfg.month;
+ const dl=dayOfLife();
+ return`${dl&&dl>=1&&dl<=28?dailyBox(dl):''}${ruler()}${cm!=null?guideBox(cm,true):'<p class="note" style="margin-top:14px">设定当前月龄后，这里会显示本月的澳洲通用注意事项。</p>'}<div class="panels">
+ ${panel('本周待办',todo,`本周 ${a} 至 ${b} 的待执行事项，以及未定日期的待执行事项。`)}
+ ${panel('已完成',done,'本周日期内、由你手动标记为已完成的记录。')}
+ ${panel('待核实',ver,mv.length?`另有 ${mv.length} 个监护器候选仍有待核实字段。`:'')}
+ ${panel('需要补购',buy,'补购前先确认剩余数量和是否在用，避免重复囤货。')}
+ ${panel('需要专业确认',pro,'建议向医生、护士等专业人员确认。')}
+ ${panel('最近复盘',rev,'',r=>`<li><button data-ed="${esc(r.id)}">${esc(r.date||'未填日期')} · ${esc(r.title)}<br><span class="meta">${esc((r.data?.raw||'').slice(0,60))}</span></button></li>`)}
+ </div>`}
+function months(){const cnt=i=>{const a=recs.filter(r=>i==='none'?(r.month===''||r.month==null):String(r.month)===String(i));return ST.map(s=>`<span class="chip ${SC[s]}">${s} ${a.filter(r=>r.status===s).length}</span>`).join(' ')};
+ const cur=cfg.month===''||cfg.month==null?'':String(cfg.month);
+ return`<div class="months">${[...Array.from({length:13},(_,i)=>i),'none'].map(i=>`<button class="mcard ${F.m===String(i)?'on':''}" data-month="${i}"><b>${i==='none'?'未指定':i+' 个月'}${String(i)===cur?' · 当前':''}</b><span>${cnt(i)}</span>${i!=='none'?`<span class="meta">通用事项 ${(GUIDE[i]||[]).length} 条</span>`:''}</button>`).join('')}</div>
+ ${F.m==='0'?dailyBox(pickDay||Math.min(Math.max(dayOfLife()||1,1),28),true):''}${F.m&&F.m!=='none'?guideBox(+F.m):''}<div class="row" style="margin-bottom:12px"><h3 class="sp">${F.m?(F.m==='none'?'未指定月龄':F.m+' 个月')+'的记录':'全部记录'}</h3><button class="pri" data-new="months">新增月龄事项</button></div>
+ ${list(sortR(recs.filter(pass)),'没有符合筛选条件的记录。')}`}
+function monitors(){
+ if(!mons.length)return`<div class="row" style="margin-bottom:12px"><span class="sp"></span><button class="pri" id="mNew">新增候选产品</button></div><div class="empty">还没有候选产品。</div>`;
+ const ms=mons.filter(m=>(!F.s||m.status===F.s)&&(!F.q||JSON.stringify(m).toLowerCase().includes(F.q.toLowerCase())));
+ return`<div class="principles"><strong>提醒</strong><span>婴儿监护器不能预防窒息，也不能替代安全睡眠环境和大人看护。“口鼻遮挡检测”等功能请以厂商资料和专业意见为准，标为待核实。</span></div>
+ <div class="row" style="margin-bottom:12px"><span class="note sp">每格分三层：产品资料（来自厂商或评测）、我的判断、是否待核实。</span><button class="pri" id="mNew">新增候选产品</button></div>
+ ${ms.length?`<div class="scroll"><table><thead><tr><th style="min-width:110px">字段</th>${ms.map(m=>`<th><div class="row">${chip(m.status)}<b>${esc(m.name)}</b></div><div class="meta">我的倾向：${esc(m.lean||'未决定')}${m.model?' · '+esc(m.model):''}</div>${/^https:\/\//.test(m.link||'')?`<a href="${esc(m.link)}" target="_blank" rel="noopener">资料链接</a>`:''}<div class="row" style="margin-top:6px"><button class="sm" data-med="${esc(m.id)}">编辑</button><button class="sm del" data-mrm="${esc(m.id)}">删除</button></div></th>`).join('')}</tr></thead>
+ <tbody>${MF.map(([k,l])=>`<tr><th>${l}</th>${ms.map(m=>{const f=m.fields?.[k]||{};return`<td><div class="cell"><div><span>资料</span>${esc(f.info||'—')}</div><div><span>判断</span>${esc(f.judge||'—')}</div>${f.verify!==false?`<div><i class="tag" style="margin:0">${V}</i></div>`:''}</div></td>`}).join('')}</tr>`).join('')}
+ <tr><th>备注</th>${ms.map(m=>`<td>${esc(m.note||'')}</td>`).join('')}</tr></tbody></table></div>`:'<div class="empty">没有符合筛选条件的产品。</div>'}`}
+function modPage(k){const m=MODS[k];const arr=sortR(recs.filter(r=>r.module===k&&pass(r)));
+ let extra='';
+ if(k==='sleep')extra=`<div class="principles"><strong>固定安全原则（仅作提醒，不是安全保证）</strong><ul style="margin:0;padding:0"><li>0–12 个月睡眠区域避免松散被褥。</li><li>不要把婴儿监护器当作预防窒息的工具。</li><li>具体的睡眠安排、环境温度等个体化问题，请向专业人员确认（待核实）。</li></ul></div>`;
+ if(k==='supplies'){const s=recs.filter(r=>r.module==='supplies');extra=`<div class="row note" style="margin:8px 0 16px"><span>已购 ${s.filter(r=>r.data?.bought==='已购').length}</span><span>在用 ${s.filter(r=>r.data?.inuse==='在用').length}</span><span>需要补购 ${s.filter(r=>r.data?.reorder==='是').length}</span><span>购买情况待核实 ${s.filter(r=>r.data?.bought===V).length}</span></div>`}
+ return`${extra}<div class="row" style="margin-bottom:12px"><span class="sp"></span><button class="pri" data-new="${k}">新增记录</button></div>${list(arr,recs.some(r=>r.module===k)?'没有符合筛选条件的记录。':'还没有记录。点“新增记录”开始。')}`}
+function renderMain(){const m=MODS[view];
+ let h=`<h2>${view==='home'?'本周概览':m.n}</h2>${m.d?`<p class="note" style="margin-bottom:14px">${m.d}</p>`:''}`;
+ h+=view==='home'?home():view==='months'?months():view==='monitors'?monitors():modPage(view);
+ if(!loaded)h='<p class="note">正在读取记录…</p>';
+ $('#main').innerHTML=h}
+function render(){renderAge();renderNav();renderFilters();renderMain()}
+function renderData(){renderAge();renderMain()}
+
+const MOCK={"records": [{"id": "d1", "module": "feeding", "title": "早上喂奶", "status": "已完成", "month": 0, "date": "2026-11-26", "data": {"time": "06:40", "kind": "母乳", "amount": "左右各约 12 分钟（估计）", "spit": "少量", "reaction": "吃完安静入睡"}, "needPro": false, "verify": "", "note": "", "updatedAt": "2026-11-26T08:00:00Z"}, {"id": "d2", "module": "feeding", "title": "中午喂奶", "status": "已完成", "month": 0, "date": "2026-11-26", "data": {"time": "11:15", "kind": "混合喂养", "amount": "母乳约 10 分钟 + 配方奶约 30ml（估计）", "spit": "无", "reaction": "吃得较快"}, "needPro": false, "verify": "", "note": "", "updatedAt": "2026-11-26T08:00:00Z"}, {"id": "d3", "module": "feeding", "title": "夜间喂奶记录", "status": "待执行", "month": 0, "date": "2026-11-26", "data": {"kind": "母乳"}, "needPro": false, "verify": "", "note": "今晚记录", "updatedAt": "2026-11-26T08:00:00Z"}, {"id": "d4", "module": "sleep", "title": "午睡", "status": "已完成", "month": 0, "date": "2026-11-26", "data": {"place": "父母房间婴儿床", "start": "12:00", "end": "14:10", "soothe": "轻拍", "env": "仰睡，床内无松散被褥"}, "needPro": false, "verify": "", "note": "", "updatedAt": "2026-11-26T08:00:00Z"}, {"id": "d5", "module": "sleep", "title": "每次睡前检查睡眠区域：无松散被褥、枕头、毛绒玩具", "status": "待执行", "month": "", "date": "", "data": {}, "needPro": false, "verify": "", "note": "提醒，不是安全保证", "updatedAt": "T08:00:00Z"}, {"id": "d6", "module": "supplies", "title": "Sudocrem 125g", "status": "已确认", "month": "", "date": "", "data": {"bought": "已购", "inuse": "待核实", "qty": "1 支", "reorder": "否", "scene": "尿布区护理（待核实）", "usage": "待核实"}, "needPro": true, "verify": "用法、频率、适用月龄向药剂师确认", "note": "“已确认”只代表已购买", "updatedAt": "T08:00:00Z"}, {"id": "d7", "module": "supplies", "title": "QV Baby", "status": "已确认", "month": "", "date": "", "data": {"bought": "已购", "inuse": "待核实", "qty": "待核实", "reorder": "否", "usage": "待核实"}, "needPro": false, "verify": "具体款式待核实", "note": "", "updatedAt": "T08:00:00Z"}, {"id": "d8", "module": "supplies", "title": "Bepanthen", "status": "已确认", "month": "", "date": "", "data": {"bought": "已购", "inuse": "待核实", "qty": "待核实", "reorder": "否", "usage": "待核实"}, "needPro": true, "verify": "用法向药剂师确认", "note": "", "updatedAt": "T08:00:00Z"}, {"id": "d9", "module": "supplies", "title": "尿布（新生儿码）", "status": "已确认", "month": "", "date": "", "data": {"bought": "已购", "inuse": "在用", "qty": "约 20 片", "reorder": "是", "scene": "日常", "usage": "待核实"}, "needPro": false, "verify": "", "note": "示例", "updatedAt": "T08:00:00Z"}, {"id": "d10", "module": "months", "title": "确认乙肝疫苗是否已在医院接种", "status": "待核实", "month": 0, "date": "2026-11-26", "data": {"detail": "按国家免疫计划，应在出生后 7 天内接种。"}, "needPro": true, "verify": "向医院或家庭医生确认", "note": "", "updatedAt": "2026-11-26T08:00:00Z"}, {"id": "d11", "module": "months", "title": "预约 2 个月疫苗（最早 6 周）", "status": "待执行", "month": 1, "date": "", "data": {"detail": ""}, "needPro": false, "verify": "", "note": "", "updatedAt": "T08:00:00Z"}, {"id": "d12", "module": "care", "title": "洗澡", "status": "待执行", "month": 0, "date": "2026-11-27", "data": {"item": "洗澡", "product": "QV Baby（待核实）", "freq": "待核实", "dilution": "待核实", "keep": "待核实"}, "needPro": false, "verify": "", "note": "", "updatedAt": "2026-11-27T08:00:00Z"}, {"id": "d13", "module": "outing", "title": "第一次出门：儿童健康检查", "status": "待执行", "month": 0, "date": "2026-12-03", "data": {"place": "社区儿童健康中心（示例）", "items": "后向安全座椅、尿布、湿巾、备用衣服"}, "needPro": false, "verify": "", "note": "", "updatedAt": "2026-12-03T08:00:00Z"}, {"id": "d14", "module": "review", "title": "第 1 周复盘", "status": "已完成", "month": 0, "date": "2026-11-26", "data": {"raw": "每天吃奶约 9–10 次；第 5 天起湿尿布 6 片左右。", "judge": "喂养节奏逐渐稳定。", "pro": "", "next": "确认乙肝疫苗；预约 2 周检查。"}, "needPro": false, "verify": "", "note": "", "updatedAt": "2026-11-26T08:00:00Z"}], "monitors": [{"id": "dm1", "name": "候选产品 A（示例）", "model": "", "status": "待核实", "lean": "继续比较", "link": "", "note": "演示用，不代表真实产品", "fields": {"display": {"info": "示例：有独立显示屏", "judge": "晚上不想一直看手机，这点有用", "verify": true}, "phone": {"info": "", "judge": "", "verify": true}, "multi": {"info": "", "judge": "", "verify": true}, "privacy": {"info": "", "judge": "", "verify": true}, "region": {"info": "", "judge": "", "verify": true}, "power": {"info": "", "judge": "", "verify": true}, "night": {"info": "", "judge": "", "verify": true}, "cry": {"info": "", "judge": "", "verify": true}, "face": {"info": "", "judge": "", "verify": true}, "price": {"info": "", "judge": "", "verify": true}, "other": {"info": "", "judge": "", "verify": true}}}], "settings": {"birth": "2026-11-19", "month": 0}};
+function mock(fn,x){const all=()=>JSON.parse(JSON.stringify({...MOCK,canEdit:true,me:'本地测试'}));
+ const up=(a,o)=>{const i=a.findIndex(r=>r.id===o.id);i<0?a.push(o):a[i]=o};
+ if(fn==='saveRecord')up(MOCK.records,{...x,updatedAt:new Date().toISOString()});
+ if(fn==='saveMonitor')up(MOCK.monitors,{...x,updatedAt:new Date().toISOString()});
+ if(fn==='deleteRecord')MOCK.records=MOCK.records.filter(r=>r.id!==x);
+ if(fn==='deleteMonitor')MOCK.monitors=MOCK.monitors.filter(r=>r.id!==x);
+ if(fn==='saveSettings')MOCK.settings=x;
+ if(fn==='getCoverPhoto'||fn==='uploadPhoto')return null;
+ return all()}
+const GS=(fn,...args)=>new Promise((res,rej)=>{const r=window.google?.script?.run;
+ if(r)r.withSuccessHandler(res).withFailureHandler(rej)[fn](...args);else setTimeout(()=>res(mock(fn,...args)),50)});
+function apply(d){if(!d)return;recs=d.records||[];mons=d.monitors||[];cfg=d.settings||{};canEdit=!!d.canEdit;loaded=1;
+ document.body.classList.toggle('ro',!canEdit);
+ note(canEdit?'':'你目前是查看者，只能看，不能修改。如需修改，请让表格所有者把你设为编辑者。');renderData()}
+async function call(fn,arg){busy++;note('正在保存…');
+ try{const d=await GS(fn,arg);apply(d);return true}
+ catch(e){note('保存失败：'+((e&&e.message)||'请检查网络或权限后再试。'));return false}finally{busy--}}
+function labelsOf(k){const o={};for(const f of MODS[k]?.f||[])o[f.k]=f.l;return o}
+async function put(col,id,body){if(!canEdit){note('你只有查看权限。');return false}
+ return col==='records'?call('saveRecord',{...body,id,labels:labelsOf(body.module)}):call('saveMonitor',{...body,id})}
+async function del(col,id){if(!canEdit)return;await call(col==='records'?'deleteRecord':'deleteMonitor',id)}
+function lockForm(){if(canEdit)return;FM.querySelectorAll('input,select,textarea').forEach(x=>x.disabled=true);const p=FM.querySelector('button.pri');if(p)p.remove()}
+
+const M=$('#modal'),FM=$('#form');
+const close=()=>{M.classList.remove('open');FM.innerHTML=''};
+M.onclick=e=>{if(e.target===M)close()};document.addEventListener('keydown',e=>{if(e.key==='Escape'&&M.classList.contains('open'))close()});
+const mopts=v=>['<option value="">未指定</option>',...Array.from({length:13},(_,i)=>`<option value="${i}" ${String(v)===String(i)?'selected':''}>${i} 个月</option>`)].join('');
+function fieldHtml(f,v){const id='f_'+f.k,lab=`${esc(f.l)}${f.v?`<span class="tag">${V}</span>`:''}`;
+ if(f.t==='area')return`<label class="full" for="${id}">${lab}<textarea id="${id}" name="d.${f.k}" placeholder="${esc(f.ph||'')}">${esc(v)}</textarea></label>`;
+ if(f.t==='sel')return`<label for="${id}">${lab}<select id="${id}" name="d.${f.k}"><option value=""></option>${f.o.map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select></label>`;
+ return`<label for="${id}">${lab}<input id="${id}" name="d.${f.k}" type="${f.t==='time'?'time':f.t==='num'?'number':'text'}" ${f.t==='num'?'min="0"':''} value="${esc(v)}" placeholder="${esc(f.ph||'')}"></label>`}
+function openRec(id,mod,pre){const r=id?recs.find(x=>x.id===id):(pre||null);if(id&&!r)return;const k=r?r.module:mod;const m=MODS[k];
+ const d=r?.data||{};const isNew=!r||!r.id;
+ FM.innerHTML=`<div class="row"><h2 class="sp">${isNew?'新增':'编辑'} · ${m.n}</h2><button type="button" class="sm" id="xBtn">关闭</button></div>
+ <div class="fgrid">
+ <label class="full" for="f_title">标题<input id="f_title" name="title" required value="${esc(r?.title||'')}"></label>
+ <label for="f_status">状态（必须手动选择）<select id="f_status" name="status" required><option value="">请选择</option>${ST.map(s=>`<option ${r?.status===s?'selected':''}>${s}</option>`).join('')}</select></label>
+ <label for="f_month">月龄（手动）<select id="f_month" name="month">${mopts(r?r.month:(cfg.month??''))}</select></label>
+ <label for="f_date">日期（手动）<input id="f_date" name="date" type="date" value="${esc(r?r.date:today())}"></label>
+ ${(m.f||[]).map(f=>fieldHtml(f,isNew&&f.v?V:(d[f.k]??''))).join('')}
+ <label class="full" for="f_verify">待核实事项<input id="f_verify" name="verify" value="${esc(r?.verify||'')}" placeholder="如 使用频率、适用月龄需向药剂师确认"></label>
+ <label class="full" for="f_note">备注<textarea id="f_note" name="note">${esc(r?.note||'')}</textarea></label>
+ <label class="ck full"><input type="checkbox" name="needPro" ${r?.needPro?'checked':''}>需要专业确认</label>
+ </div><p class="note" id="fErr" role="alert"></p>
+ <p class="note">保存记录不代表事情已经完成；只有你把状态手动改为“已完成”才算完成。</p>
+ <div class="row"><span class="sp"></span><button type="button" id="cBtn">取消</button><button class="pri">保存</button></div>`;
+ M.classList.add('open');$('#f_title').focus();lockForm();$('#xBtn').onclick=close;$('#cBtn').onclick=close;
+ FM.onsubmit=async e=>{e.preventDefault();const fd=new FormData(FM);const t=(fd.get('title')||'').trim(),s=fd.get('status');
+  if(!t||!s){$('#fErr').textContent=!t?'请填写标题。':'请手动选择状态。';return}
+  const data={};for(const[key,v]of fd)if(key.startsWith('d.'))data[key.slice(2)]=String(v).trim();
+  const body={module:k,title:t,status:s,month:fd.get('month')===''?'':+fd.get('month'),date:fd.get('date')||'',verify:(fd.get('verify')||'').trim(),note:(fd.get('note')||'').trim(),needPro:fd.get('needPro')==='on',data};
+  if(await put('records',r&&r.id?r.id:nid('r'),body))close()}}
+function openMon(id){const m=id?mons.find(x=>x.id===id):null;if(id&&!m)return;const fs=m?.fields||{};
+ FM.innerHTML=`<div class="row"><h2 class="sp">${m?'编辑':'新增'}候选监护器</h2><button type="button" class="sm" id="xBtn">关闭</button></div>
+ <div class="fgrid"><label for="m_name">产品名称<input id="m_name" name="name" value="${esc(m?.name||'')}"></label>
+ <label for="m_model">型号／版本<input id="m_model" name="model" value="${esc(m?.model||'')}"></label>
+ <label for="m_status">状态（手动）<select id="m_status" name="status"><option value="">请选择</option>${ST.map(s=>`<option ${m?.status===s?'selected':''}>${s}</option>`).join('')}</select></label>
+ <label for="m_lean">我的倾向（由你决定）<select id="m_lean" name="lean">${LEAN.map(s=>`<option ${(m?.lean||'未决定')===s?'selected':''}>${s}</option>`).join('')}</select></label>
+ <label class="full" for="m_link">资料链接（https://）<input id="m_link" name="link" value="${esc(m?.link||'')}"></label></div>
+ ${MF.map(([k,l])=>{const f=fs[k]||{};return`<div class="mf"><b>${l}</b><div class="fgrid"><label>产品资料<textarea name="i.${k}">${esc(f.info||'')}</textarea></label><label>我的判断<textarea name="j.${k}">${esc(f.judge||'')}</textarea></label></div><label class="ck"><input type="checkbox" name="v.${k}" ${f.verify!==false?'checked':''}>待核实</label></div>`}).join('')}
+ <label class="full" for="m_note">备注<textarea id="m_note" name="note">${esc(m?.note||'')}</textarea></label>
+ <p class="note" id="fErr" role="alert"></p><div class="row"><span class="sp"></span><button type="button" id="cBtn">取消</button><button class="pri">保存</button></div>`;
+ M.classList.add('open');$('#m_name').focus();lockForm();$('#xBtn').onclick=close;$('#cBtn').onclick=close;
+ FM.onsubmit=async e=>{e.preventDefault();const fd=new FormData(FM);const n=(fd.get('name')||'').trim();
+  if(!n||!fd.get('status')){$('#fErr').textContent=!n?'请填写产品名称。':'请手动选择状态。';return}
+  const fields={};for(const[k]of MF)fields[k]={info:String(fd.get('i.'+k)||'').trim(),judge:String(fd.get('j.'+k)||'').trim(),verify:fd.get('v.'+k)==='on'};
+  const body={name:n,model:(fd.get('model')||'').trim(),status:fd.get('status'),lean:fd.get('lean'),link:(fd.get('link')||'').trim(),note:(fd.get('note')||'').trim(),fields};
+  if(await put('monitors',m?m.id:nid('m'),body))close()}}
+function openConfirm(t,fn){FM.innerHTML=`<h2>确认删除</h2><p>${esc(t)}</p><p class="note">删除后无法恢复。</p><div class="row"><span class="sp"></span><button type="button" id="cBtn">取消</button><button class="pri" type="button" id="okBtn">删除</button></div>`;
+ M.classList.add('open');$('#cBtn').onclick=close;$('#cBtn').focus();$('#okBtn').onclick=async()=>{close();await fn()}}
+function openSettings(){FM.innerHTML=`<h2>调整月龄和日期</h2><p class="note">月龄只按你在这里选的值显示；出生日期只用来显示参考，不会自动改月龄或推断任何完成情况。</p>
+ <div class="fgrid"><label for="s_birth">出生日期<input id="s_birth" type="date" name="birth" value="${esc(cfg.birth||'')}"></label>
+ <label for="s_month">当前月龄（手动）<select id="s_month" name="month">${mopts(cfg.month??'')}</select></label></div>
+ <div class="row"><span class="sp"></span><button type="button" id="cBtn">取消</button><button class="pri">保存</button></div>`;
+ M.classList.add('open');$('#cBtn').onclick=close;
+ FM.onsubmit=async e=>{e.preventDefault();const fd=new FormData(FM);const c={birth:fd.get('birth')||'',month:fd.get('month')===''?'':+fd.get('month')};
+  if(await call('saveSettings',c))close()}}
+
+document.addEventListener('click',e=>{const t=e.target.closest('button,[data-month]');if(!t||M.contains(t))return;const ds=t.dataset;
+ if(ds.gadd!=null)openRec(null,'months',{module:'months',title:ds.gadd.slice(0,60),month:F.m&&F.m!=='none'?+F.m:(cfg.month??''),date:'',verify:'个体安排向医护人员确认',note:'来源：'+ds.gadd.length+'字通用信息｜'+ds.gsrc,data:{detail:ds.gadd}});else if(ds.ed)openRec(ds.ed);else if(ds.new)openRec(null,ds.new);
+ else if(ds.rm){const r=recs.find(x=>x.id===ds.rm);if(r)openConfirm(`删除记录“${r.title}”？`,()=>del('records',r.id))}
+ else if(ds.med)openMon(ds.med);else if(ds.mrm){const m=mons.find(x=>x.id===ds.mrm);if(m)openConfirm(`删除候选产品“${m.name}”？`,()=>del('monitors',m.id))}
+ else if(t.id==='mNew')openMon(null);
+ else if(ds.month!=null){F.m=ds.month;if(view!=='months')location.hash='months';else{renderFilters();renderMain()}}});
+document.addEventListener('change',async e=>{if(e.target.id==='dayPick'){pickDay=+e.target.value;renderMain();return}const id=e.target.dataset?.st;if(!id)return;const r=recs.find(x=>x.id===id);if(!r)return;const{id:_,...b}=r;await put('records',id,{...b,status:e.target.value})});
+$('#copyAll').onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify({settings:cfg,records:recs,monitors:mons},null,1));$('#copyAll').textContent='已复制'}catch(_){$('#copyAll').textContent='复制失败'}setTimeout(()=>$('#copyAll').textContent='复制全部数据（备份）',2000)};
+function route(){const h=location.hash.slice(1);view=MODS[h]?h:'home';if(view!=='months')F.mod='';render();window.scrollTo(0,0)}
+window.addEventListener('hashchange',route);
+route();
+
+async function loadPhoto(skip){$('#photoNote').textContent='正在读取照片…';
+ try{const p=await GS('getCoverPhoto',skip||null);
+  if(p&&p.url){photo=p;$('#coverImg').src=p.url;$('#coverImg').hidden=false;$('#ph').hidden=true;$('#photoNote').textContent=p.count>1?`共 ${p.count} 张，每次随机显示`:'';}
+  else{$('#photoNote').textContent=p&&p.error?p.error:'演示版不读取照片。正式版会从 Drive 的“封面照片”文件夹里随机显示宝宝的照片。'}}
+ catch(_){$('#photoNote').textContent='照片暂时读不到。'}}
+function shrink(file){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const k=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(img.src);res(c.toDataURL('image/jpeg',0.86))};img.onerror=rej;img.src=URL.createObjectURL(file)})}
+$('#nextPhoto').onclick=()=>loadPhoto(photo&&photo.id);
+$('#upPhoto').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;$('#photoNote').textContent='正在上传…';
+ try{const d=await shrink(f);const p=await GS('uploadPhoto',d,'尧哥-'+today()+'.jpg');$('#coverImg').src=d;$('#coverImg').hidden=false;$('#ph').hidden=true;photo=p||photo;$('#photoNote').textContent='已上传到“封面照片”文件夹。'}
+ catch(err){$('#photoNote').textContent='上传失败：'+((err&&err.message)||'请稍后再试。')}};
+GS('getAll').then(apply).catch(e=>{loaded=1;note('读取数据失败：'+((e&&e.message)||'请确认你有表格的访问权限。'));renderMain()});
+loadPhoto();
+setInterval(()=>{if(!document.hidden&&!busy&&!M.classList.contains('open'))GS('getAll').then(apply).catch(()=>{})},60000);
+
+}
+</script>
+</body>
+</html>
